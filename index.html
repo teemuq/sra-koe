@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SRA Ampumakoe – Pisteytys & Läpäisy</title>
+<style>
+  :root {
+    --bg:#0b1020; --card:#111831; --ink:#e9eefc; --muted:#aab3d9; --accent:#69e3a7; --warn:#ffc857; --bad:#ff6b6b; --ok:#7cf; --border:#1b254d;
+    --pass:#1e6f4f; --pass-border:#39a776; --fail:#7b2730; --fail-border:#c44252;
+    --tap:44px; /* min tap target */
+  }
+  html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial;-webkit-text-size-adjust:100%;}
+  body{touch-action:manipulation}
+  header{padding:18px 16px;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0b1020 0%,#0b1020a0 100%);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  header h1{margin:0;font-size:20px}
+  .right{margin-left:auto}
+  .wrap{max-width:1100px;margin:0 auto;padding:16px}
+  .row{display:flex;gap:16px;flex-wrap:wrap}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px}
+  .grow{flex:1 1 340px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  button,select,input{background:#0f1430;color:var(--ink);border:1px solid #293566;border-radius:12px;padding:10px 12px;font-size:16px}
+  button{cursor:pointer;min-height:var(--tap)}
+  button.primary{background:#14305c;border-color:#2b5fb3}
+  button.ghost{background:transparent}
+  button.small{padding:6px 10px;font-size:14px;min-height:36px}
+  .pill{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:8px 12px;border:1px solid #2a355f;background:#0e1430}
+  .pill.primary{background:#14305c;border-color:#2b5fb3}
+  .grid{display:grid;gap:10px}
+  .subtle{color:var(--muted)}
+  .footer{opacity:.75;margin-top:12px;font-size:12px}
+  .note{font-size:13px;color:var(--muted)}
+
+  /* Shooter list rows in settings */
+  #shooterList{display:flex;flex-direction:column;gap:6px;width:100%}
+  .srow{display:flex;align-items:center;justify-content:space-between;gap:8px;border-bottom:1px dashed var(--border);padding:6px 0}
+  .srow:last-child{border-bottom:none}
+  .srow-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .srow-right{display:flex;align-items:center;gap:8px}
+
+  /* Tabs */
+  .tabs{margin-top:12px;position:relative}
+  .tablist{display:flex;gap:8px;flex-wrap:wrap;position:sticky;top:0;z-index:20;background:linear-gradient(180deg,#0e1430, #0e1430cc);padding:8px;border-bottom:1px solid var(--border);backdrop-filter:blur(6px)}
+  .tabbtn{display:flex;align-items:center;gap:8px;border-radius:999px;padding:8px 12px;border:1px solid #2a355f;background:#0e1430;min-height:var(--tap)}
+  .tabbtn[aria-selected="true"]{outline:2px solid #2b5fb3}
+  .tabbtn.result-pass{background:var(--pass);border-color:var(--pass-border)}
+  .tabbtn.result-fail{background:var(--fail);border-color:var(--fail-border)}
+  .tabbtn .strings{display:inline-flex;gap:6px}
+  .chip{width:12px;height:12px;border-radius:999px;border:1px solid #40508b;background:#0b1536;display:inline-block}
+  .chip.ok{background:var(--accent);border-color:#3aa77c}
+  .tabpanel{margin-top:10px;scroll-margin-top:64px;background:transparent;border:none;padding:0}
+  .tabpanel[hidden]{display:none}
+  .panelhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;gap:8px}
+  .panelhead .note{white-space:nowrap}
+  .nextrow{position:sticky;bottom:0;z-index:15;background:linear-gradient(180deg, #111831 0%, #0a1026 100%);border-top:1px solid var(--border);padding:12px 10px;display:flex;gap:8px;justify-content:space-between;align-items:center}
+  .nextrow button{min-width:200px}
+
+  /* String row: compact numeric inputs (no borders for each string) */
+  .string{display:block}
+  .string h5{margin:8px 0 8px 0;font-size:14px;color:var(--muted)}
+  .topbar{display:flex;align-items:center;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px}
+  #shooterSwitch{display:flex;gap:8px;flex-wrap:wrap}
+  .numrow{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+  .num{display:flex;flex-direction:column;gap:6px}
+  .num label{font-size:13px;color:var(--muted)}
+  .num input[type="number"]{width:4.5ch;min-width:4.5ch;text-align:center;padding:10px 8px;font-size:18px;min-height:var(--tap)}
+  .num.time input{width:7.5ch;min-width:7.5ch}
+  .actrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
+  /* Setup panel spacing */
+  #setupDetails{margin-bottom:1rem}
+
+  /* Tables */
+  .table{width:100%;border-collapse:collapse;margin-top:8px}
+  .table th,.table td{border-bottom:1px solid #213160;padding:10px;text-align:left}
+  .table th.nowrap{white-space:nowrap}
+
+  /* Mobile tweaks */
+  @media (max-width:720px){
+    .nextrow{padding-bottom:calc(12px + env(safe-area-inset-bottom))}
+  }
+  @media (max-width:480px){
+    .tabbtn{flex:1 1 auto}
+    .controls>*, .tabbtn{min-width:44px}
+    .nextrow{justify-content:space-between}
+    .nextrow button{width:auto}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>SRA Ampumakoe – pistelaskin</h1>
+  <button class="pill ghost right" id="openSetup">Asetukset</button>
+</header>
+
+<div class="wrap">
+  <!-- Collapsible setup -->
+  <details id="setupDetails" open class="card">
+    <summary style="cursor:pointer"><b>Asetukset ja ampujat</b> <span class="subtle" id="setupSummaryInfo"></span></summary>
+    <div class="controls" style="margin-top:12px">
+      <input id="newName" placeholder="Nimi…" />
+      <button class="primary" id="addShooter">Lisää ampuja</button>
+      <button class="ghost" id="clearAll">Tyhjennä kaikki</button>
+      <span class="note">Kaikki muutokset tallentuvat automaattisesti.</span>
+    </div>
+    <div id="shooterList"></div>
+    <div class="controls">
+      <label class="pill">Rasti 5 ase:
+        <select id="r5Mode">
+          <option value="pistol">Pistooli (8 laukausta)</option>
+          <option value="rifle">Kivääri (12 laukausta)</option>
+        </select>
+      </label>
+      <button class="pill primary" id="startShoot">Aloita ammunta</button>
+    </div>
+  </details>
+
+  <div class="card" id="stagesCard">
+    <div class="topbar">
+      <h3 style="margin:0">Syötä osumat ja ajat</h3>
+      <div id="shooterSwitch"></div>
+    </div>
+    <div class="tabs">
+      <div class="tablist" role="tablist" id="tablist"></div>
+      <div id="panels"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>TQ <span class="subtle">V1.6</span></div>
+  </div>
+</div>
+
+<script>
+/* ---------- Data & constants ---------- */
+const POINTS = { five:5, three:3, one:1 };
+const PASS_THRESHOLD = 1.3; // HF
+const STORAGE_KEY = "sra_ampumakoe_v1"; // säilyttää vanhat datat
+const MAX_SHOOTERS = 4;
+
+const BASE_STAGES = [
+  { id:"r1", name:"Rasti 1 – 10 m, 3 sarjaa (molemmin/vahva/heikko)", strings:3, shotsPerString:4, hint:"Ohjeaika 5 s / sarja. 2 laukausta per taulu." },
+  { id:"r2", name:"Rasti 2 – 10 m, 3 käännössarjaa (180°/90°/90°)", strings:3, shotsPerString:4, hint:"Ohjeaika 5 s / sarja. 2 laukausta per taulu." },
+  { id:"r3", name:"Rasti 3 – 10 m, 3 paikkaa siirtymillä", strings:3, shotsPerString:2, hint:"Ohjeaika 15 s. 2 laukausta per paikka yhteensä 6 laukausta." },
+  { id:"r4", name:"Rasti 4 – 20–15–10 m (seisten/polvelta/makuulta)", strings:3, shotsPerString:4, hint:"Ohjeaika 25 s. 2 laukausta per taulu per paikka." },
+];
+
+function r5Config(mode){
+  if (mode === "rifle") {
+    return { id:"r5", name:"Rasti 5 – Kivääri 20→B/A→C", strings:3, shotsPerString:4, hint:"Ohjeaika 15 s. 2 laukausta/taulu/paikka, yhteensä 12." };
+  } else {
+    return { id:"r5", name:"Rasti 5 – Pistooli 10 m → 15 m", strings:2, shotsPerString:4, hint:"Ohjeaika 15 s. 2 laukausta/taulu/paikka, yhteensä 8." };
+  }
+}
+
+let state = load() || {
+  shooters: [],
+  currentShooterId: null,
+  r5Mode: "pistol",
+  currentStageId: "r1",
+};
+
+// Migration: older saves had global safe flag
+if (state.safe !== undefined) {
+  (state.shooters||[]).forEach((s)=>{ if (s.safe === undefined) { s.safe = !!state.safe; } });
+  delete state.safe;
+}
+
+function uid(){
+  return Math.random().toString(36).slice(2,9);
+}
+
+function newShooter(name="Ampuja"){
+  const id = uid();
+  const stages = {};
+  const r5 = r5Config(state.r5Mode);
+  [...BASE_STAGES, r5].forEach((st)=>{
+    stages[st.id] = {
+      strings: Array.from({length: st.strings}, ()=>({ five:0, three:0, one:0, miss:0, time:"" })),
+      penalties: 0
+    };
+  });
+  return { id, name, stages, safe:true };
+}
+
+/* ---------- Persistence ---------- */
+function save(){
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+function load(){
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY));
+  } catch(e) {
+    return null;
+  }
+}
+
+/* ---------- Helpers ---------- */
+function formatTime(t){
+  return (parseFloat(t)||0).toFixed(2);
+}
+function clampInt(v){
+  v = parseInt(v||0,10);
+  if (isNaN(v) || v < 0) {
+    return 0;
+  } else {
+    return v;
+  }
+}
+function escapeHtml(s){
+  return (s||"").replace(/[&<>"']/g, (m)=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m]));
+}
+function coreStages(){
+  return [...BASE_STAGES, r5Config(state.r5Mode)];
+}
+function stagesList(){
+  // include virtual TULOS tab at the end
+  return [...coreStages(), { id:"tulos", name:"Tulos", strings:0, shotsPerString:0, hint:"" }];
+}
+function isStringComplete(str, expected){
+  const shots = str.five + str.three + str.one + str.miss;
+  if (shots === expected && parseFloat(str.time||0) > 0) {
+    return true;
+  } else {
+    return false;
+  }
+}
+function isStageComplete(stCfg, stData){
+  return stData.strings.every((str)=>{ return isStringComplete(str, stCfg.shotsPerString); });
+}
+function shooterCompletedStages(shooter){
+  let n = 0; const list = coreStages();
+  list.forEach((st)=>{ if (isStageComplete(st, shooter.stages[st.id])) { n++; } });
+  return { done:n, total:list.length };
+}
+
+/* ---------- Calculation ---------- */
+function computeStage(stCfg, stData){
+  let points = 0, time = 0, shots = 0, expectedShots = stCfg.strings * stCfg.shotsPerString;
+  let penalty = 0;
+
+  stData.strings.forEach((str)=>{
+    const strShots = str.five + str.three + str.one + str.miss;
+    shots += strShots;
+    const base = str.five*POINTS.five + str.three*POINTS.three + str.one*POINTS.one; // miss = 0
+    points += base;
+    time += parseFloat(str.time||0);
+    const expected = stCfg.shotsPerString;
+    const extra = Math.max(0, strShots - expected);
+    const missing = Math.max(0, expected - strShots);
+    penalty += (extra + missing) * 10; // −10 kumpaakin
+  });
+
+  const manual = parseInt(stData.penalties||0,10) || 0; // kirjoita negatiivisena esim. -10
+  const totalPenalty = penalty - manual; // jos manual = -10 → totalPenalty = penalty + 10
+
+  points -= totalPenalty;
+  if (points < 0) {
+    points = 0;
+  }
+
+  const hf = time>0 ? (points / time) : 0;
+  return { points, time, shots, expectedShots, penalty: totalPenalty, hf };
+}
+
+function computeTotals(shooter){
+  const list = coreStages();
+  let P=0, T=0;
+  list.forEach((st)=>{ const s = computeStage(st, shooter.stages[st.id]); P += s.points; T += s.time; });
+  const HF = T>0 ? P/T : 0;
+  const expectedMax = (state.r5Mode==="rifle") ? 270 : 250;
+  return { P, T, HF, max: expectedMax };
+}
+
+/* ---------- DOM refs ---------- */
+const shooterListEl = document.getElementById("shooterList");
+const newNameEl = document.getElementById("newName");
+const addBtn = document.getElementById("addShooter");
+const clearAllBtn = document.getElementById("clearAll");
+const r5ModeSel = document.getElementById("r5Mode");
+const tablistEl = document.getElementById("tablist");
+const panelsEl = document.getElementById("panels");
+const setupDetails = document.getElementById("setupDetails");
+const openSetupBtn = document.getElementById("openSetup");
+const startShootBtn = document.getElementById("startShoot");
+const setupSummaryInfo = document.getElementById("setupSummaryInfo");
+const shooterSwitchEl = document.getElementById("shooterSwitch");
+
+/* ---------- Event wiring ---------- */
+setupDetails.addEventListener('toggle', ()=>{ syncSetupButton(); });
+openSetupBtn.onclick = ()=>{ setupDetails.open = true; syncSetupButton(); };
+startShootBtn.onclick = ()=>{ setupDetails.open = false; syncSetupButton(); document.getElementById('stagesCard').scrollIntoView({behavior:'smooth', block:'start'}); };
+
+function syncSetupButton(){
+  openSetupBtn.style.display = setupDetails.open ? 'none' : '';
+}
+
+addBtn.onclick = ()=>{
+  if (state.shooters.length >= MAX_SHOOTERS) {
+    alert("Enintään 4 ampujaa.");
+    return;
+  }
+  const nm = (newNameEl.value || `Ampuja ${state.shooters.length+1}`).trim();
+  const s = newShooter(nm);
+  state.shooters.push(s);
+  state.currentShooterId = s.id;
+  if (!state.currentStageId) {
+    state.currentStageId = stagesList()[0].id;
+  }
+  newNameEl.value = "";
+  render(); save();
+};
+
+clearAllBtn.onclick = ()=>{
+  if (!confirm("Tyhjennetäänkö kaikki tallennetut tulokset?")) {
+    return;
+  }
+  localStorage.removeItem(STORAGE_KEY);
+  state = { shooters:[], currentShooterId:null, r5Mode:"pistol", currentStageId:"r1" };
+  render();
+};
+
+r5ModeSel.onchange = ()=>{
+  state.r5Mode = r5ModeSel.value;
+  const cfg = r5Config(state.r5Mode);
+  state.shooters.forEach((s)=>{
+    const old = s.stages["r5"];
+    const next = { strings: Array.from({length: cfg.strings}, (_,i)=> old?.strings?.[i] || {five:0,three:0,one:0,miss:0,time:""}), penalties: old?.penalties||0 };
+    s.stages["r5"] = next;
+  });
+  const ids = stagesList().map((x)=>{ return x.id; });
+  if (!ids.includes(state.currentStageId)) {
+    state.currentStageId = ids[0];
+  }
+  render(); save();
+};
+
+/* ---------- Rendering ---------- */
+function render(){
+  syncSetupButton();
+  r5ModeSel.value = state.r5Mode;
+
+  // Setup summary info in <summary>
+  const totalShooters = state.shooters.length;
+  setupSummaryInfo.textContent = `— ampujia ${totalShooters}, R5: ${state.r5Mode==='rifle'?'kivääri':'pistooli'}`;
+
+  renderSetupShooterList();
+  renderShooterSwitch();
+  renderTabs();
+}
+
+function renderSetupShooterList(){
+  shooterListEl.innerHTML = "";
+  state.shooters.forEach((s)=>{
+    const row = document.createElement('div');
+    row.className = 'srow';
+
+    const left = document.createElement('div');
+    left.className = 'srow-left';
+    const btn = document.createElement("button");
+    btn.className = "pill" + (s.id===state.currentShooterId ? " primary" : "");
+    btn.title = "Vaihda ampujaan";
+    btn.innerHTML = `<span>👤</span> ${escapeHtml(s.name)}`;
+    btn.onclick = ()=>{ state.currentShooterId = s.id; save(); renderShooterSwitch(); renderTabs(); renderSetupShooterList(); };
+    left.appendChild(btn);
+
+    const right = document.createElement('div');
+    right.className = 'srow-right';
+    const rename = document.createElement("button");
+    rename.className = "small ghost"; rename.textContent = "Nimeä…";
+    rename.onclick = ()=>{
+      const v = prompt("Ampujan nimi:", s.name);
+      if (v !== null) { s.name = v.trim() || s.name; save(); renderSetupShooterList(); renderShooterSwitch(); renderTabs(); }
+    };
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Poista";
+    del.onclick = ()=>{
+      if (!confirm(`Poistetaanko ampuja “${s.name}”?`)) { return; }
+      state.shooters = state.shooters.filter((x)=> x.id !== s.id);
+      if (state.currentShooterId === s.id) { state.currentShooterId = state.shooters[0]?.id || null; }
+      save(); renderSetupShooterList(); renderShooterSwitch(); renderTabs();
+    };
+    right.appendChild(rename); right.appendChild(del);
+
+    row.appendChild(left); row.appendChild(right);
+    shooterListEl.appendChild(row);
+  });
+}
+
+function renderShooterSwitch(){
+  shooterSwitchEl.innerHTML = "";
+  if (state.shooters.length > 1) {
+    state.shooters.forEach((s)=>{
+      const pill = document.createElement('button');
+      pill.className = 'pill' + (s.id===state.currentShooterId ? ' primary' : '');
+      pill.textContent = s.name;
+      pill.onclick = ()=>{ state.currentShooterId = s.id; save(); renderShooterSwitch(); renderTabs(); renderSetupShooterList(); };
+      shooterSwitchEl.appendChild(pill);
+    });
+  } else if (state.shooters[0]) {
+    // single shooter — still show highlighted name
+    const only = state.shooters[0];
+    const pill = document.createElement('button');
+    pill.className = 'pill primary';
+    pill.textContent = only.name;
+    pill.disabled = true;
+    shooterSwitchEl.appendChild(pill);
+  }
+}
+
+function renderTabs(){
+  const cur = state.shooters.find((s)=> s.id === state.currentShooterId);
+  const stages = stagesList();
+  tablistEl.innerHTML = "";
+  panelsEl.innerHTML = "";
+
+  if (!cur) { panelsEl.innerHTML = `<div class="note">Lisää ensin ampuja.</div>`; return; }
+
+  stages.forEach((st, idx)=>{
+    if (st.id !== 'tulos' && !cur.stages[st.id]) {
+      cur.stages[st.id] = { strings: Array.from({length: st.strings}, ()=>({five:0,three:0,one:0,miss:0,time:""})), penalties:0 };
+    }
+
+    const tab = document.createElement("button");
+    tab.className = "tabbtn";
+    tab.setAttribute("role","tab");
+    tab.setAttribute("aria-controls", `panel-${st.id}`);
+    tab.setAttribute("aria-selected", st.id===state.currentStageId);
+    tab.title = st.name;
+
+    let chips = '';
+    if (st.id !== 'tulos') {
+      chips = cur.stages[st.id].strings.map((str)=>{
+        const ok = isStringComplete(str, st.shotsPerString);
+        return `<span class="chip ${ok?'ok':''}"></span>`;
+      }).join("");
+    }
+
+    if (st.id === 'tulos') {
+      const prog = shooterCompletedStages(cur);
+      if (prog.done === prog.total) {
+        const sum = computeTotals(cur);
+        const pass = (sum.HF > PASS_THRESHOLD) && !!cur.safe;
+        if (pass) { tab.classList.add('result-pass'); } else { tab.classList.add('result-fail'); }
+      }
+    }
+
+    tab.innerHTML = st.id === 'tulos' ? `<b>TULOS</b>` : `<b>${st.id.toUpperCase()}</b> <span class="strings" aria-hidden="true">${chips}</span>`;
+    tab.onclick = ()=>{ state.currentStageId = st.id; renderTabs(); save(); };
+    tablistEl.appendChild(tab);
+
+    const panel = document.createElement("div");
+    panel.className = "tabpanel"; // no card/border
+    panel.id = `panel-${st.id}`;
+    panel.setAttribute("role","tabpanel");
+    if (st.id !== state.currentStageId) { panel.setAttribute("hidden", ""); }
+
+    if (st.id === 'tulos') {
+      panel.innerHTML = buildTulosHTML(cur);
+      panelsEl.appendChild(panel);
+      wireTulos(panel, cur);
+      return;
+    }
+
+    panel.innerHTML = `
+      <div class="panelhead">
+        <div>
+          <b>${st.name}</b>
+          <div class="note">${st.strings} sarjaa × ${st.shotsPerString} laukausta — ${st.hint||""}</div>
+        </div>
+      </div>
+      <div class="grid" id="grid-${st.id}"></div>
+      <div class="nextrow">
+        <div class="note" id="status-${st.id}">${stageDoneLabel(st, cur)}</div>
+        <button class="primary" id="next-${st.id}">${idx===stages.length-2? 'Näytä tulokset' : 'Seuraava rasti →'}</button>
+      </div>
+    `;
+
+    panelsEl.appendChild(panel);
+
+    const grid = panel.querySelector(`#grid-${st.id}`);
+    const data = cur.stages[st.id];
+    data.strings.forEach((str, sidx)=>{
+      const expected = st.shotsPerString;
+      const totals = str.five + str.three + str.one + str.miss;
+      const warn = (totals && totals !== expected) ? `<span class=\"warn\">⚠ odotettu ${expected}, nyt ${totals}</span>` : "";
+
+      const row = document.createElement("div");
+      row.className = "string";
+      row.innerHTML = `
+        <h5>Sarja ${sidx+1} ${warn}</h5>
+        <div class="numrow">
+          <div class="num"><label>A/B (5p)</label><input type="number" min="0" step="1" inputmode="numeric" value="${str.five}"></div>
+          <div class="num"><label>C (3p)</label><input type="number" min="0" step="1" inputmode="numeric" value="${str.three}"></div>
+          <div class="num"><label>D (1p)</label><input type="number" min="0" step="1" inputmode="numeric" value="${str.one}"></div>
+          <div class="num"><label>Ohi (−10p)</label><input type="number" min="0" step="1" inputmode="numeric" value="${str.miss}"></div>
+          <div class="num time"><label>Aika (s)</label><input type="number" step="0.01" min="0" inputmode="decimal" value="${str.time}"></div>
+        </div>
+        <div class="actrow">
+          <button class="small ghost" data-act="quickfill" data-val="${expected}">Täytä: ${expected}A</button>
+          <button class="small ghost" data-act="clear">Tyhjennä</button>
+        </div>
+      `;
+
+      const inputs = row.querySelectorAll("input");
+      inputs[0].oninput = (e)=>{ str.five = clampInt(e.target.value); rerenderSoft(st); };
+      inputs[1].oninput = (e)=>{ str.three = clampInt(e.target.value); rerenderSoft(st); };
+      inputs[2].oninput = (e)=>{ str.one = clampInt(e.target.value); rerenderSoft(st); };
+      inputs[3].oninput = (e)=>{ str.miss = clampInt(e.target.value); rerenderSoft(st); };
+      inputs[4].addEventListener('change', (e)=>{ str.time = e.target.value; rerenderSoftWithMaybeTulos(cur); });
+      inputs[4].addEventListener('blur', (e)=>{ str.time = e.target.value; rerenderSoftWithMaybeTulos(cur); });
+
+      row.querySelectorAll("button").forEach((b)=>{
+        b.onclick = ()=>{
+          const act = b.dataset.act;
+          if (act === "clear") { Object.assign(str,{five:0,three:0,one:0,miss:0,time:""}); }
+          if (act === "quickfill") { const need = expected; Object.assign(str,{five:need,three:0,one:0,miss:0}); }
+          rerenderSoft(st);
+        };
+      });
+      grid.appendChild(row);
+    });
+
+    const totals = computeStage(st, data);
+    const totalsEl = document.createElement("div");
+    totalsEl.className = "totals";
+    totalsEl.innerHTML = `
+      <div class="kpi">Pisteet (rasti): <b>${Math.round(totals.points)}</b> <span class="${totals.penalty ? 'bad':''}">(${totals.penalty ? 'sis. rangaistuksia '+totals.penalty+' p' : 'ei rangaistuksia'})</span></div>
+      <div class="kpi">Aika (rasti): <b>${formatTime(totals.time)}</b></div>
+      <div class="kpi">Laukaukset: <b>${totals.shots}/${totals.expectedShots}</b></div>
+      <div class="kpi">Osumakerroin: <b>${(totals.hf||0).toFixed(3)}</b></div>
+      <div class="kpi">Manuaaliset virhepisteet: <input type="number" step="1" value="${data.penalties}" style="width:90px" title="Kirjoita negatiivisena esim. -10 per toimintavirhe"></div>
+    `;
+    totalsEl.querySelector("input").oninput = (e)=>{ data.penalties = parseInt(e.target.value||0,10); rerenderSoft(st); };
+    grid.appendChild(totalsEl);
+
+    const statusEl = panel.querySelector(`#status-${st.id}`);
+    statusEl.textContent = stageDoneLabel(st, cur);
+
+    const nextBtn = panel.querySelector(`#next-${st.id}`);
+    if (nextBtn) {
+      nextBtn.onclick = ()=>{
+        if (idx < stages.length - 2) {
+          state.currentStageId = stages[idx+1].id; renderTabs(); save();
+        } else {
+          state.currentStageId = 'tulos'; renderTabs(); save();
+          document.getElementById('stagesCard').scrollIntoView({behavior:'smooth', block:'start'});
+        }
+      };
+    }
+  });
+}
+
+function stageDoneLabel(st, shooter){
+  const d = shooter.stages[st.id];
+  const done = isStageComplete(st, d);
+  if (done) { return "✅ Rasti valmis"; } else { return "⏳ Ei valmis"; }
+}
+
+function buildTulosHTML(cur){
+  const safeChecked = cur.safe ? 'checked' : '';
+  return `
+    <div class="panelhead" style="margin-bottom:12px">
+      <b>Tulos</b>
+      <label class="pill" title="Tämä arvioidaan ammunnan jälkeen">
+        <input type="checkbox" id="safeToggle" ${safeChecked} style="width:18px;height:18px;accent-color:#3fd8a5;margin-right:6px"/> Suoritus turvallinen (RO hyväksyy)
+      </label>
+    </div>
+    <div id="tulosContent"></div>
+  `;
+}
+
+function wireTulos(panel, cur){
+  const safeToggle = panel.querySelector('#safeToggle');
+  if (safeToggle) { safeToggle.onchange = ()=>{ cur.safe = safeToggle.checked; save(); renderTabs(); }; }
+  const cont = panel.querySelector('#tulosContent');
+  cont.innerHTML = renderTulosTable(cur);
+}
+
+function renderTulosTable(cur){
+  const prog = shooterCompletedStages(cur);
+  let html = '<table class="table"><thead><tr><th class="nowrap">Ampuja</th><th class="nowrap">Pisteet</th><th class="nowrap">Aika (s)</th><th class="nowrap">Osumakerroin</th><th class="nowrap">Tulos</th></tr></thead><tbody>';
+  if (prog.done === prog.total) {
+    const sum = computeTotals(cur);
+    const passHF = (sum.HF > PASS_THRESHOLD);
+    const passSafe = (!!cur.safe);
+    const pass = (passHF && passSafe);
+    html += `<tr><td>${escapeHtml(cur.name)}</td><td>${Math.round(sum.P)} / <span class="subtle">${sum.max}</span></td><td>${formatTime(sum.T)}</td><td>${sum.HF.toFixed(3)}</td><td>${pass ? '<b class="good">HYVÄKSYTTY</b>' : '<b class="bad">HYLÄTTY</b>'} <span class="subtle">(${passHF? 'HF ok' : 'HF < '+PASS_THRESHOLD} · ${passSafe? 'turvallinen' : 'turvaton'})</span></td></tr>`;
+  } else {
+    html += `<tr><td>${escapeHtml(cur.name)}</td><td>—</td><td>—</td><td>—</td><td><span class="note">Valmiita rasteja: ${prog.done}/${prog.total}. Syötä kaikki nähdäksesi tuloksen.</span></td></tr>`;
+  }
+  html += '</tbody></table>';
+  return html;
+}
+
+/* ---------- Boot ---------- */
+if (!state.currentShooterId && state.shooters[0]) { state.currentShooterId = state.shooters[0].id; }
+if (!state.currentStageId) { state.currentStageId = stagesList()[0].id; }
+render();
+
+function rerenderSoft(st){ save(); renderTabs(); }
+function rerenderSoftWithMaybeTulos(cur){
+  const before = shooterCompletedStages(cur);
+  const beforeAll = (before.done === before.total);
+  rerenderSoft();
+  const after = shooterCompletedStages(cur);
+  const afterAll = (after.done === after.total);
+  if (!beforeAll && afterAll) {
+    state.currentStageId = 'tulos'; save(); renderTabs(); document.getElementById('stagesCard').scrollIntoView({behavior:'smooth', block:'start'});
+  }
+}
+</script>
+</body>
+</html>
